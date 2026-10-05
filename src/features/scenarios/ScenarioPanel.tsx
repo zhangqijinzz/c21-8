@@ -1,29 +1,33 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
+  ArrowUpDown,
   GitCompareArrows,
   Plus,
   RotateCcw,
+  ShieldAlert,
   Trash2,
 } from "lucide-react";
 import type {
   LatencyProject,
   ScenarioSnapshot,
 } from "../../shared/domain/types";
-import type { ScenarioComparison } from "./scenarioViewModel";
+import {
+  buildScenarioMatrix,
+  compareScenarios,
+  describeRestoreImpact,
+  type ScenarioMatrixRow,
+} from "./scenarioViewModel";
 
 interface Props {
   project: LatencyProject;
   onSave: (name: string) => boolean;
   onRemove: (id: string) => void;
   onRestore: (id: string) => void;
-  baseline?: ScenarioSnapshot;
-  comparison?: ScenarioSnapshot;
-  comparisonResult?: ScenarioComparison;
-  onSelectBaseline: (id: string) => void;
-  onSelectComparison: (id: string) => void;
 }
+
+const DISPLAY_LIMIT = 8;
 
 function formatDuration(value: number): string {
   return value < 1000
@@ -31,21 +35,70 @@ function formatDuration(value: number): string {
     : `${(value / 1000).toFixed(2)} s`;
 }
 
+function concurrencyLabel(limit: number | null): string {
+  return limit ? `${limit} 路并发` : "不限并发";
+}
+
+function diffLabel(row: ScenarioMatrixRow): string {
+  const parts: string[] = [];
+  if (row.changedParamsVsCurrent)
+    parts.push(`${row.changedParamsVsCurrent} 项参数`);
+  if (row.addedNodesVsCurrent) parts.push(`+${row.addedNodesVsCurrent} 节点`);
+  if (row.removedNodesVsCurrent)
+    parts.push(`-${row.removedNodesVsCurrent} 节点`);
+  return parts.length ? parts.join(" · ") : "与当前一致";
+}
+
 export default function ScenarioPanel({
   project,
   onSave,
   onRemove,
   onRestore,
-  baseline,
-  comparison,
-  comparisonResult,
-  onSelectBaseline,
-  onSelectComparison,
 }: Props) {
   const [name, setName] = useState("");
-  const delta = comparisonResult?.deltaMs ?? 0;
-  const outcome = comparisonResult?.outcome ?? "equal";
-  const changes = comparisonResult?.changes ?? [];
+  const [sortAsc, setSortAsc] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [pair, setPair] = useState<string[]>([]);
+  const [pendingRestore, setPendingRestore] = useState<ScenarioSnapshot | null>(
+    null,
+  );
+
+  const matrix = useMemo(() => buildScenarioMatrix(project), [project]);
+  const sortedRows = useMemo(() => {
+    const rankable = matrix.rows
+      .filter((row) => row.recheck.ok)
+      .sort((a, b) =>
+        sortAsc
+          ? a.scenario.completionMs - b.scenario.completionMs
+          : b.scenario.completionMs - a.scenario.completionMs,
+      );
+    const invalid = matrix.rows.filter((row) => !row.recheck.ok);
+    return [...rankable, ...invalid];
+  }, [matrix, sortAsc]);
+  const visibleRows = expanded
+    ? sortedRows
+    : sortedRows.slice(0, DISPLAY_LIMIT);
+  const hiddenCount = sortedRows.length - visibleRows.length;
+
+  const drilldown = pair
+    .map((id) => project.scenarios.find((scenario) => scenario.id === id))
+    .filter((scenario): scenario is ScenarioSnapshot => Boolean(scenario));
+  const drilldownComparison =
+    drilldown.length === 2
+      ? compareScenarios(drilldown[0]!, drilldown[1]!)
+      : undefined;
+  const drilldownHasInvalid = pair.some((id) => matrix.invalidIds.includes(id));
+  const restoreImpact = pendingRestore
+    ? describeRestoreImpact(project, pendingRestore.id)
+    : undefined;
+
+  const togglePair = (id: string) =>
+    setPair((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id].slice(-2),
+    );
+
   return (
     <section className="module-page scenarios-page">
       <div className="module-heading">
@@ -88,127 +141,267 @@ export default function ScenarioPanel({
         </div>
       ) : (
         <>
-          <div className="compare-selectors">
-            <div>
-              <span className="compare-label">基准方案</span>
-              <select
-                value={baseline?.id ?? ""}
-                onChange={(event) => onSelectBaseline(event.target.value)}
-              >
-                {project.scenarios.map((scenario) => (
-                  <option key={scenario.id} value={scenario.id}>
-                    {scenario.name}
-                  </option>
-                ))}
-              </select>
+          {matrix.cautions.map((caution) => (
+            <div className="matrix-caution" key={caution}>
+              <ShieldAlert size={14} />
+              {caution}
             </div>
-            <span className="compare-vs">VS</span>
-            <div>
-              <span className="compare-label">对照方案</span>
-              <select
-                value={comparison?.id ?? ""}
-                onChange={(event) => onSelectComparison(event.target.value)}
-              >
-                {project.scenarios.map((scenario) => (
-                  <option key={scenario.id} value={scenario.id}>
-                    {scenario.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          {baseline && comparison && (
-            <div className="comparison-result">
-              <article className="compare-card">
-                <span>基准完成时间</span>
-                <strong>{formatDuration(baseline.completionMs)}</strong>
-                <small>
-                  {baseline.name} · {baseline.nodes.length} 节点
-                </small>
-              </article>
-              <div className="delta-card">
-                <span>方案差异</span>
-                <strong
-                  className={outcome === "slower" ? "delta-bad" : "delta-good"}
+          ))}
+          <div className="matrix-table">
+            <div className="matrix-head">
+              <span>下钻</span>
+              <span>方案</span>
+              <span>
+                <button
+                  className="matrix-sort"
+                  onClick={() => setSortAsc((asc) => !asc)}
+                  title="按完成预算排序"
                 >
-                  {outcome === "equal" ? null : outcome === "faster" ? (
-                    <ArrowDownRight size={17} />
-                  ) : (
-                    <ArrowUpRight size={17} />
-                  )}
-                  {formatDuration(Math.abs(delta))}
-                </strong>
-                <small>
-                  {outcome === "equal"
-                    ? "两方案预算持平"
-                    : outcome === "faster"
-                      ? "对照方案更快"
-                      : "对照方案更慢"}
-                </small>
+                  完成预算 <ArrowUpDown size={11} />
+                  {sortAsc ? "升序" : "降序"}
+                </button>
+              </span>
+              <span>并发策略</span>
+              <span>与当前差异</span>
+              <span>关键链路</span>
+              <span>操作</span>
+            </div>
+            {visibleRows.map((row) => {
+              const { scenario } = row;
+              const selected = pair.includes(scenario.id);
+              return (
+                <div
+                  className={`matrix-row ${row.recheck.ok ? "" : "is-invalid"} ${selected ? "is-selected" : ""}`}
+                  key={scenario.id}
+                >
+                  <span>
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => togglePair(scenario.id)}
+                      title="勾选两个方案查看详细差异"
+                      aria-label={`选择方案 ${scenario.name} 进行下钻对比`}
+                    />
+                  </span>
+                  <span className="matrix-name">
+                    <strong>{scenario.name}</strong>
+                    <small>
+                      {new Date(scenario.createdAt).toLocaleString("zh-CN", {
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}{" "}
+                      · {scenario.nodes.length} 节点
+                    </small>
+                  </span>
+                  <span className="matrix-budget">
+                    <b>{formatDuration(scenario.completionMs)}</b>
+                    {matrix.bestId === scenario.id && (
+                      <em className="rank-badge rank-best">最优</em>
+                    )}
+                    {matrix.worstId === scenario.id && (
+                      <em className="rank-badge rank-worst">最差</em>
+                    )}
+                    {!row.recheck.ok && (
+                      <em
+                        className="rank-badge rank-invalid"
+                        title={row.recheck.errors.join("\n")}
+                      >
+                        无法复算 · 存档值
+                      </em>
+                    )}
+                  </span>
+                  <span>{concurrencyLabel(scenario.concurrencyLimit)}</span>
+                  <span>{diffLabel(row)}</span>
+                  <span
+                    className="matrix-path"
+                    title={row.criticalPathNames.join(" → ")}
+                  >
+                    {row.criticalPathNames.length
+                      ? row.criticalPathNames.join(" → ")
+                      : "—"}
+                  </span>
+                  <span className="matrix-actions">
+                    <button
+                      className="icon-button"
+                      title="恢复此方案"
+                      aria-label={`恢复方案 ${scenario.name}`}
+                      onClick={() => setPendingRestore(scenario)}
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                    <button
+                      className="icon-button danger-button"
+                      title="删除方案"
+                      aria-label={`删除方案 ${scenario.name}`}
+                      onClick={() => onRemove(scenario.id)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </span>
+                </div>
+              );
+            })}
+            {hiddenCount > 0 && (
+              <button
+                className="matrix-expand"
+                onClick={() => setExpanded(true)}
+              >
+                还有 {hiddenCount} 个方案未显示 · 展开全部 {sortedRows.length}{" "}
+                个
+              </button>
+            )}
+            {expanded && sortedRows.length > DISPLAY_LIMIT && (
+              <button
+                className="matrix-expand"
+                onClick={() => setExpanded(false)}
+              >
+                收起列表
+              </button>
+            )}
+          </div>
+          <p className="matrix-hint">
+            勾选任意两个方案可下钻查看详细差异；最优 / 最差基于全部{" "}
+            {matrix.rankableIds.length} 份可复算方案。
+          </p>
+          {drilldown.length === 2 && drilldownComparison && (
+            <div className="drilldown">
+              <div className="snapshot-heading">
+                <span className="section-label">详细差异</span>
+                <span>
+                  {drilldown[0]!.name} VS {drilldown[1]!.name}
+                </span>
               </div>
-              <article className="compare-card compare-card-accent">
-                <span>对照完成时间</span>
-                <strong>{formatDuration(comparison.completionMs)}</strong>
-                <small>
-                  {comparison.name} · {comparison.nodes.length} 节点
-                </small>
-              </article>
-            </div>
-          )}
-          <div className="snapshot-list">
-            <div className="snapshot-heading">
-              <span className="section-label">已保存快照</span>
-              <span>{project.scenarios.length} 个方案</span>
-            </div>
-            {project.scenarios.map((scenario) => (
-              <div className="snapshot-row" key={scenario.id}>
-                <span className="snapshot-badge">S</span>
-                <div className="snapshot-info">
-                  <strong>{scenario.name}</strong>
+              {drilldownHasInvalid && (
+                <div className="matrix-caution">
+                  <ShieldAlert size={14} />
+                  其中一份方案当前无法复算，以下预算为存档值，差异结论仅供参考。
+                </div>
+              )}
+              <div className="comparison-result">
+                <article className="compare-card">
+                  <span>基准完成时间</span>
+                  <strong>{formatDuration(drilldown[0]!.completionMs)}</strong>
                   <small>
-                    {new Date(scenario.createdAt).toLocaleString("zh-CN", {
-                      month: "numeric",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}{" "}
-                    ·{" "}
-                    {scenario.concurrencyLimit
-                      ? `${scenario.concurrencyLimit} 路并发`
-                      : "不限并发"}
+                    {drilldown[0]!.name} · {drilldown[0]!.nodes.length} 节点
+                  </small>
+                </article>
+                <div className="delta-card">
+                  <span>方案差异</span>
+                  <strong
+                    className={
+                      drilldownComparison.outcome === "slower"
+                        ? "delta-bad"
+                        : "delta-good"
+                    }
+                  >
+                    {drilldownComparison.outcome ===
+                    "equal" ? null : drilldownComparison.outcome ===
+                      "faster" ? (
+                      <ArrowDownRight size={17} />
+                    ) : (
+                      <ArrowUpRight size={17} />
+                    )}
+                    {formatDuration(Math.abs(drilldownComparison.deltaMs))}
+                  </strong>
+                  <small>
+                    {drilldownComparison.outcome === "equal"
+                      ? "两方案预算持平"
+                      : drilldownComparison.outcome === "faster"
+                        ? "对照方案更快"
+                        : "对照方案更慢"}
                   </small>
                 </div>
-                <b className="snapshot-time">
-                  {formatDuration(scenario.completionMs)}
-                </b>
-                <button
-                  className="icon-button"
-                  title="恢复此方案"
-                  aria-label={`恢复方案 ${scenario.name}`}
-                  onClick={() => onRestore(scenario.id)}
-                >
-                  <RotateCcw size={14} />
-                </button>
-                <button
-                  className="icon-button danger-button"
-                  title="删除方案"
-                  aria-label={`删除方案 ${scenario.name}`}
-                  onClick={() => onRemove(scenario.id)}
-                >
-                  <Trash2 size={14} />
-                </button>
+                <article className="compare-card compare-card-accent">
+                  <span>对照完成时间</span>
+                  <strong>{formatDuration(drilldown[1]!.completionMs)}</strong>
+                  <small>
+                    {drilldown[1]!.name} · {drilldown[1]!.nodes.length} 节点
+                  </small>
+                </article>
               </div>
-            ))}
-          </div>
-          {changes.length > 0 && (
-            <div className="change-summary">
-              <strong>参数变化</strong>
-              {changes.map((change) => (
-                <span key={change}>{change}</span>
-              ))}
+              {drilldownComparison.changes.length > 0 && (
+                <div className="change-summary">
+                  <strong>参数变化</strong>
+                  {drilldownComparison.changes.map((change) => (
+                    <span key={change}>{change}</span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </>
+      )}
+      {pendingRestore && restoreImpact && (
+        <div className="dialog-backdrop" role="presentation">
+          <div
+            className="confirm-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="restore-scenario-title"
+          >
+            <span className="dialog-icon">
+              <RotateCcw size={18} />
+            </span>
+            <h2 id="restore-scenario-title">
+              恢复“{pendingRestore.name}”到当前链路？
+            </h2>
+            {restoreImpact.identical ? (
+              <p>当前链路与该方案完全一致，恢复不会产生任何变化。</p>
+            ) : (
+              <>
+                <p>恢复将覆盖当前链路的节点与并发设置：</p>
+                <ul className="restore-impact">
+                  {restoreImpact.removedNodeNames.length > 0 && (
+                    <li>
+                      移除 {restoreImpact.removedNodeNames.length} 个节点：
+                      {restoreImpact.removedNodeNames.join("、")}
+                    </li>
+                  )}
+                  {restoreImpact.addedNodeNames.length > 0 && (
+                    <li>
+                      新增 {restoreImpact.addedNodeNames.length} 个节点：
+                      {restoreImpact.addedNodeNames.join("、")}
+                    </li>
+                  )}
+                  {restoreImpact.changedParamCount > 0 && (
+                    <li>覆盖 {restoreImpact.changedParamCount} 项节点参数</li>
+                  )}
+                  {restoreImpact.concurrencyFrom !==
+                    restoreImpact.concurrencyTo && (
+                    <li>
+                      并发上限：
+                      {concurrencyLabel(restoreImpact.concurrencyFrom)} →{" "}
+                      {concurrencyLabel(restoreImpact.concurrencyTo)}
+                    </li>
+                  )}
+                </ul>
+                <p>
+                  已保存的方案快照不受影响；当前链路未保存为方案的修改将丢失，可先在上方保存快照。
+                </p>
+              </>
+            )}
+            <div>
+              <button
+                className="button button-neutral"
+                onClick={() => setPendingRestore(null)}
+              >
+                取消
+              </button>
+              <button
+                className="button button-primary"
+                disabled={restoreImpact.identical}
+                onClick={() => {
+                  onRestore(pendingRestore.id);
+                  setPendingRestore(null);
+                }}
+              >
+                确认恢复
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   );

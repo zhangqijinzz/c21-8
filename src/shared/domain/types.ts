@@ -18,6 +18,7 @@ export interface ScenarioSnapshot {
   nodes: RequestNode[];
   completionMs: number;
   criticalPath: string[];
+  mode?: SimulationMode;
 }
 
 export interface LatencyProject {

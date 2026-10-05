@@ -20,11 +20,9 @@ import {
   getGraphAnalysis,
 } from "../graph-editor/graphViewModel";
 import {
-  compareScenarios,
   removeScenario,
   restoreScenario,
   saveScenario,
-  type ScenarioComparison,
 } from "../scenarios/scenarioViewModel";
 import { removeProject, updateProject } from "../projects/projectViewModel";
 import { simulateProject } from "../../shared/domain/simulation";
@@ -41,10 +39,6 @@ export function useLatencyLab() {
   const [status, setStatus] = useState<LabStatus>("loading");
   const [module, setModule] = useState<LabModule>("simulation");
   const [mode, setMode] = useState<SimulationMode>("expected");
-  const [comparisonIds, setComparisonIds] = useState<{
-    baselineId: string;
-    comparisonId: string;
-  }>({ baselineId: "", comparisonId: "" });
   const [notice, setNotice] = useState("");
   const [persisted, setPersisted] = useState<"saving" | "saved" | "error">(
     "saved",
@@ -63,29 +57,9 @@ export function useLatencyLab() {
     () => (activeProject ? getGraphAnalysis(activeProject) : undefined),
     [activeProject],
   );
-  const scenarioList = activeProject?.scenarios ?? [];
-  const baselineScenario =
-    scenarioList.find((scenario) => scenario.id === comparisonIds.baselineId) ??
-    scenarioList[1] ??
-    scenarioList[0];
-  const comparisonScenario =
-    scenarioList.find(
-      (scenario) => scenario.id === comparisonIds.comparisonId,
-    ) ?? scenarioList[0];
-  const scenarioComparison: ScenarioComparison | undefined =
-    baselineScenario && comparisonScenario
-      ? compareScenarios(baselineScenario, comparisonScenario)
-      : undefined;
   const simulationValid =
     Boolean(activeProject) &&
     result?.entries.length === activeProject?.nodes.length;
-
-  const selectComparisonScenario = useCallback(
-    (side: "baselineId" | "comparisonId", id: string) => {
-      setComparisonIds((current) => ({ ...current, [side]: id }));
-    },
-    [],
-  );
 
   useEffect(() => {
     let mounted = true;
@@ -238,10 +212,6 @@ export function useLatencyLab() {
       }
       const next = saveScenario(activeProject, result, name);
       editProject(next);
-      setComparisonIds({
-        baselineId: next.scenarios[1]?.id ?? next.scenarios[0]?.id ?? "",
-        comparisonId: next.scenarios[0]?.id ?? "",
-      });
       setNotice("方案快照已保存。");
       return true;
     },
@@ -295,10 +265,5 @@ export function useLatencyLab() {
     removeSavedScenario,
     restoreSavedScenario,
     retrySave,
-    scenarioList,
-    baselineScenario,
-    comparisonScenario,
-    scenarioComparison,
-    selectComparisonScenario,
   };
 }

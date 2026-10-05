@@ -166,15 +166,6 @@ export default function LatencyLabView() {
               onSave={vm.saveSnapshot}
               onRemove={vm.removeSavedScenario}
               onRestore={vm.restoreSavedScenario}
-              baseline={vm.baselineScenario}
-              comparison={vm.comparisonScenario}
-              comparisonResult={vm.scenarioComparison}
-              onSelectBaseline={(id) =>
-                vm.selectComparisonScenario("baselineId", id)
-              }
-              onSelectComparison={(id) =>
-                vm.selectComparisonScenario("comparisonId", id)
-              }
             />
           )}
           {vm.module === "archive" && (
