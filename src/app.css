@@ -1956,6 +1956,334 @@ button:disabled {
   color: #93a187;
   font: 8px var(--mono);
 }
+.matrix-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.matrix-sort-select {
+  height: 30px;
+  padding: 0 8px;
+  color: #506054;
+  background: #fff;
+  border: 1px solid #e6ebe3;
+  border-radius: 6px;
+  font-size: 9px;
+}
+.matrix-count {
+  margin-left: auto;
+  color: #a0a9a0;
+  font: 8px var(--mono);
+}
+.matrix-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.matrix-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  color: #5d6b60;
+  background: #fff;
+  border: 1px solid #e6ebe3;
+  border-radius: 999px;
+  font-size: 9px;
+  cursor: pointer;
+}
+.matrix-chip.active {
+  color: #e6f0d8;
+  background: #293f35;
+  border-color: #293f35;
+}
+.matrix-chip.chip-invalid {
+  color: #bd7765;
+  border-color: #ecd5cd;
+  text-decoration: line-through;
+}
+.matrix-chip.active.chip-invalid {
+  color: #f3c9bc;
+}
+.matrix-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.matrix-empty {
+  padding: 26px 18px;
+  color: #929d94;
+  background: #fff;
+  border: 1px dashed #dfe5da;
+  border-radius: 10px;
+  font-size: 10px;
+  text-align: center;
+}
+.matrix-scroll {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.matrix-table {
+  min-width: 100%;
+  border-collapse: collapse;
+}
+.matrix-table th,
+.matrix-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f0f2ee;
+  font-size: 9px;
+  text-align: left;
+  vertical-align: top;
+}
+.matrix-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.matrix-table thead th {
+  background: #fbfcf9;
+  border-bottom: 1px solid #edf0eb;
+}
+.matrix-rowhead {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  max-width: 130px;
+  overflow: hidden;
+  color: #919992;
+  background: #fff;
+  font: 500 9px var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.matrix-table thead .matrix-rowhead {
+  background: #fbfcf9;
+}
+.matrix-col-head {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 132px;
+}
+.matrix-col-head strong {
+  color: #435248;
+  font-size: 10px;
+}
+.matrix-col-head small {
+  color: #a0a9a0;
+  font-size: 8px;
+}
+.matrix-restore {
+  width: 24px;
+  height: 24px;
+}
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 8px;
+}
+.status-stale {
+  color: #9a7b2d;
+  background: #faf3df;
+}
+.status-invalid {
+  color: #bd7765;
+  background: #fbeae5;
+}
+.matrix-budget {
+  color: #36483c;
+  font: 600 11px var(--mono);
+}
+.rank-badge {
+  margin-left: 5px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font: 500 8px var(--display);
+  font-style: normal;
+}
+.rank-best {
+  color: #5c8a37;
+  background: #eef6e2;
+}
+.rank-worst {
+  color: #bd7765;
+  background: #fbeae5;
+}
+.matrix-dim {
+  opacity: 0.55;
+}
+.matrix-invalid-value {
+  color: #bd7765;
+  font-size: 9px;
+}
+.matrix-stale-note {
+  display: block;
+  margin-top: 3px;
+  color: #b39a54;
+  font-size: 8px;
+}
+.matrix-param-cell b {
+  display: block;
+  color: #4c5a50;
+  font: 600 9px var(--mono);
+}
+.matrix-param-cell small {
+  display: block;
+  margin-top: 2px;
+  color: #a0a9a0;
+  font-size: 8px;
+  white-space: nowrap;
+}
+.matrix-differs {
+  background: #fbf3df;
+}
+.matrix-absent {
+  color: #c3cac2;
+}
+.matrix-section-row td {
+  color: #75806f;
+  background: #f7f9f4;
+  font: 500 8px var(--mono);
+  letter-spacing: 0.5px;
+}
+.matrix-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.matrix-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 11px;
+  border-radius: 7px;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.matrix-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.note-warning {
+  color: #8a6d2f;
+  background: #faf3df;
+}
+.note-error {
+  color: #a85f4e;
+  background: #fbeae5;
+}
+.note-info {
+  color: #617458;
+  background: #f0f4eb;
+}
+.drilldown-section {
+  margin-top: 18px;
+}
+.drilldown-heading {
+  padding: 0 0 10px;
+  border-bottom: 0;
+}
+.drilldown-heading > span:last-child {
+  color: #a0a9a0;
+  font: 8px var(--mono);
+}
+.delta-unknown {
+  color: #a2aaa2;
+}
+.pair-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pair-summary > span {
+  padding: 5px 8px;
+  color: #617458;
+  background: #f0f4eb;
+  border-radius: 5px;
+  font-size: 8px;
+}
+.snapshot-invalid {
+  color: #bd7765;
+}
+.snapshot-stale {
+  display: block;
+  margin-top: 2px;
+  color: #b39a54;
+  font: 8px var(--mono);
+  font-weight: 400;
+}
+.restore-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(23, 36, 36, 0.42);
+}
+.restore-dialog {
+  width: 100%;
+  max-width: 440px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(23, 36, 36, 0.25);
+}
+.restore-dialog h3 {
+  margin: 0 0 6px;
+  color: #36483c;
+  font: 600 13px var(--display);
+}
+.restore-dialog > p {
+  margin: 0 0 12px;
+  color: #818a85;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.restore-impact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0 0 12px;
+  padding: 11px 13px;
+  background: #f7f9f4;
+  border-radius: 8px;
+  list-style: none;
+}
+.restore-impact-list li {
+  color: #5d6b60;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.restore-impact-list li b {
+  color: #435248;
+}
+.restore-dialog .matrix-note {
+  margin-bottom: 10px;
+}
+.restore-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.button-ghost {
+  color: #5d6b60;
+  background: transparent;
+  border-color: #e2e8de;
+}
+.button-ghost:hover {
+  background: #f0f3ed;
+}
 .storage-overview {
   display: flex;
   align-items: center;
@@ -2531,5 +2859,23 @@ button:disabled {
   .project-footnote {
     align-items: flex-start;
     line-height: 1.5;
+  }
+}
+@media (max-width: 560px) {
+  .matrix-table th,
+  .matrix-table td {
+    padding: 7px 8px;
+  }
+  .matrix-col-head {
+    min-width: 104px;
+  }
+  .matrix-rowhead {
+    max-width: 88px;
+  }
+  .matrix-param-cell small {
+    white-space: normal;
+  }
+  .restore-actions .button {
+    flex: 1;
   }
 }

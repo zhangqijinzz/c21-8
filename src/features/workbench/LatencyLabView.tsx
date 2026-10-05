@@ -163,6 +163,7 @@ export default function LatencyLabView() {
           {vm.module === "scenarios" && (
             <ScenarioPanel
               project={active}
+              canSaveCurrent={vm.simulationValid && active.nodes.length > 0}
               onSave={vm.saveSnapshot}
               onRemove={vm.removeSavedScenario}
               onRestore={vm.restoreSavedScenario}
